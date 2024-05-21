@@ -4,6 +4,8 @@
 # library ####
 library(tidyverse)
 library(here)
+library(mgcv)
+library(mgcViz)
 
 # ______________________________________________________________________________
 # reading data ####
@@ -113,9 +115,9 @@ bind_params <- function(missing_vars, params_dat, filenams, foldernam = "Data/se
   
 }
 
-# gets final value for each run within a set 
-extract_final <- function(dat, extinct = FALSE){
-  # alternative method would be to provide time step but I doubt I would use that
+# gets specified value for each run within a set 
+extract_final <- function(dat, run_time = "max", extinct = FALSE){
+
   if(extinct){
     ## adjust for when population goes extinct
     min_time <- dat %>% 
@@ -127,11 +129,17 @@ extract_final <- function(dat, extinct = FALSE){
       group_by(filename) %>% 
       dplyr::filter(time_step == min_time)
     
-  } else {
+  } else if(run_time == "max") {
     ## do things normally
     final <- dat %>%
       group_by(filename) %>%
       dplyr::filter(time_step == max(time_step))
+    
+  } else {
+    ## go by specified time step
+    final <- dat %>%
+      group_by(filename) %>%
+      dplyr::filter(time_step == run_time)
     
   }
   
