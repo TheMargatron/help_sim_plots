@@ -4,8 +4,8 @@
 # library ####
 library(tidyverse)
 library(here)
-library(mgcv)
-library(mgcViz)
+# library(mgcv)
+# library(mgcViz)
 
 # ______________________________________________________________________________
 # reading data ####
@@ -392,11 +392,11 @@ extract_contour <- function(contour_dat,
 }
 
 
-speedy_gam_plot <- function(dat, y = "mean_fec_h", var1 = "fec_b_over_fec_c", var2 = "baseline_survival") {
-  b <- mgcv::gam(get(y) ~ s(get(var2), get(var1)), data = dat)
-  b <- mgcViz::getViz(b)
-  plot(b)
-}
+# speedy_gam_plot <- function(dat, y = "mean_fec_h", var1 = "fec_b_over_fec_c", var2 = "baseline_survival") {
+#   b <- mgcv::gam(get(y) ~ s(get(var2), get(var1)), data = dat)
+#   b <- mgcViz::getViz(b)
+#   plot(b)
+# }
 
 # ______________________________________________________________________________
 # essential data ####
