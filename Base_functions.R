@@ -177,8 +177,9 @@ timeseries_plot <- function(ts_dat,
 
 contour_data <- function(dat, params_dat, 
                          cost_var = "fecundity_cost_of_fec_help",
-                         x_var = "baseline_survival",
-                         y_var = "(?!x)x"){
+                         keep_var = "baseline_survival"){
+
+  keep_var <- paste(keep_var, collapse = "|")
   
   contour_dat <- dat %>% 
     select(-contains("disp")) %>% 
@@ -197,8 +198,7 @@ contour_data <- function(dat, params_dat,
     mutate(param = str_remove_all(param, "[:digit:]")) %>% 
     distinct() %>% 
     filter(str_detect(param, cost_var) | 
-             str_detect(param, x_var) |
-             str_detect(param, y_var)) %>% 
+             str_detect(param, keep_var)) %>% 
     pivot_wider(names_from = param,
                 values_from = val) %>% 
     right_join(contour_dat, join_by(filename, foldername)) %>% 
@@ -213,14 +213,14 @@ contour_matrix <- function(contour_dat,
                            summary_fun = mean){
   
   contour_mat <- contour_dat  %>% 
-    select(!!sym(x_var), !! sym(help_var),
+    select(!! sym(x_var), !! sym(help_var),
            b_over_c) %>% 
     arrange(b_over_c) %>% 
     pivot_wider(names_from = b_over_c,
                 values_from = !! sym(help_var),
                 values_fn = summary_fun) %>% 
     select(!! sym(x_var), matches("[[:digit:]]")) %>% 
-    arrange(!!x_var) 
+    arrange(!! sym(x_var)) 
   
   return(contour_mat)
 
@@ -322,24 +322,47 @@ meta_contour <- function(contour_dat,
                          SD_lines = FALSE){
   
   contour_list <- contour_dat %>% 
-    arrange(!!x_var) %>% 
+    arrange(!! sym(x_var)) %>% 
     mutate(split_var = as.factor(!! sym(x_var))) %>% 
     split(f = .$split_var)
   
   contour_list <- lapply(contour_list, function(x){
+    x <- dplyr::arrange(x, !! sym(y_var))
     x_out <- extract_contour(x, y_var = y_var, help_var = help_var)
     x_out$split_var <- unique(x$split_var)
+
+    if(length(names(x_out))){
+      x_out <- x_out %>%
+        dplyr::rename(level.0 = level, x.0 = x, y.0 = y) %>%
+        pivot_longer(cols = -split_var,
+                     cols_vary = "slowest",
+                     names_to = c(".value", "set"),
+                     names_pattern = "([[:alpha:]]*).(.)") %>%
+        select(-set) %>%
+        as.data.frame()
+    }
     
     return(x_out)
   })
   
   contour_meta <- do.call(rbind, contour_list) %>% 
     dplyr::filter(x %in% contour_dat[[y_var]]) %>% 
+    group_by(split_var, level, x) %>%
+    summarise(y = mean(y)) %>%
+    ungroup() %>%
+
+    mutate(nx = length(unique(x))) %>%
+    group_by(split_var) %>%
+    filter(n() == nx) %>%
+    select(-nx) %>%
+    ungroup() %>%
+
     rename(!! sym(y_var) := x,
            b_over_c = y) %>% 
     select(-level) %>% 
     pivot_wider(names_from = !! sym(y_var),
-                values_from = b_over_c)
+                values_from = b_over_c) %>%
+    na.omit()
   
   contour_pnt <- contour_points(contour_dat, x_var = x_var, y_var = y_var)
   
