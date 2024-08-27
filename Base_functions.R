@@ -6,6 +6,26 @@ library(tidyverse)
 # library(here)
 library(mgcv)
 library(mgcViz)
+library(extrafont)
+library(patchwork)
+extrafont::loadfonts(device = "all")
+# Sys.setenv(R_GSCMD = "C:/Program Files/gs/gs10.03.1/bin/gswin64c.exe")
+
+
+custom_theme <- theme(axis.title.x = element_text(margin = margin(t=10,r=0,b=0,l=0)),
+                      axis.title.y = element_text(angle = 90, 
+                                                  margin = margin(t=0,r=15,b=0,l=0)),
+                      axis.line = element_line(linewidth = 1, colour = "#656565", lineend = "round"),
+                      axis.ticks = element_line(linewidth = 0.7, colour = "#656565", lineend = "round"),
+                      axis.ticks.length = unit(0.3, "lines"),
+                      axis.text.x = element_text(size = 10, margin = margin(t=5,r=0,b=0,l=0)),
+                      axis.text.y = element_text(size = 10, margin = margin(t=0,r=5,b=0,l=0)),
+                      
+                      panel.background = element_rect(fill = "white", colour = "white"),
+                      plot.background = element_rect(fill = "white", colour = "white"),
+                      plot.margin = margin(t=20,r=25,b=10,l=20),
+                      text = element_text(family = "Outfit", size = 15)
+)
 
 # ______________________________________________________________________________
 # reading data ####
@@ -328,7 +348,7 @@ meta_contour <- function(contour_dat,
     split(f = .$split_var) 
   
   contour_list <- lapply(contour_list, function(x){
-    x_out <- extract_contour(x, y_var = y_var, help_var = help_var)
+    x_out <- extract_contour(x, x_var = y_var, help_var = help_var)
     x_out$split_var <- unique(x$split_var)
     
     if(length(names(x_out)) > 4){
@@ -395,25 +415,81 @@ meta_contour <- function(contour_dat,
   
 }
 
+collapse_contour <- function(x){
+  if(length(x) > 1){
+    x_out <- lapply(1:length(x), function(a){
+      z <- as.data.frame(x[[a]]) %>% 
+        mutate(linegroup = a) %>% 
+        add_row()
+      return(z)
+    })
+    x_out <- do.call(rbind, x_out)
+  } else{
+    x_out <- as.data.frame(x) %>% 
+      mutate(linegroup = NA)
+  }
+  return(x_out)
+}
 
 extract_contour <- function(contour_dat,
-                            y_var = "juvenile_survival_weight",
+                            x_var = "juvenile_survival_weight",
                             help_var = "mean_fec_h"){
   
   contour_mat <- contour_matrix(contour_dat = contour_dat, 
                                 help_var = help_var,
-                                x_var = y_var)
+                                x_var = x_var)
 
-  lines_dat <- contourLines(x = contour_mat[, y_var][[1]], 
+  lines_dat <- contourLines(x = contour_mat[, x_var][[1]], 
                             y = as.numeric(names(contour_mat)[2:length(names(contour_mat))]),
                             z = as.matrix(contour_mat[,2:ncol(contour_mat)]),
                             levels = 0) %>% 
-    as.data.frame()
+    collapse_contour() 
   
   return(lines_dat)
     
 }
 
+multi_group_contour <- function(dat, x_var, help_var, grp){
+  plot_dat <- dat %>% 
+    group_by(!! sym(grp)) %>% 
+    do(extract_contour(., x_var = x_var, help_var = help_var)) %>% 
+    ungroup() %>% 
+    mutate(col_group = as.character(!! sym(grp)),
+           dummy_var = "1")
+  
+  ggplot(plot_dat, aes(x = x, y = y)) +
+    geom_point(data = dat, aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
+               alpha = 0.5) +
+    geom_path(aes(color = col_group), linewidth = 1.5) +
+    labs(x = x_var, y = "b_over_c", col = grp) 
+}
+
+multi_response_contour <- function(dat, x_var, fec_var, surv_var){
+  # TODO: generalise to different data formats?
+  # currently only suits fec_h and surv_h being different vars
+  # alternative format would be fec_h and surv_h as groups
+  # but then I could just use multi_group_contour
+  fec_dat <- dat %>% 
+    select({{x_var}}, {{fec_var}}, "b_over_c") %>% 
+    extract_contour(., x_var = x_var, help_var = fec_var) %>% 
+    mutate(help_var = fec_var,
+           dummy_var = "1")
+  
+  surv_dat <- dat %>% 
+    select({{x_var}}, {{surv_var}}, "b_over_c") %>% 
+    extract_contour(., x_var = x_var, help_var = surv_var) %>% 
+    mutate(help_var = surv_var,
+           dummy_var = "1")
+  
+  plot_dat <- bind_rows(fec_dat, surv_dat)
+  
+  ggplot(plot_dat, aes(x = x, y = y)) +
+    geom_point(data = dat, aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
+               alpha = 0.5) +
+    geom_line(aes(color = help_var), linewidth = 1.5) +
+    labs(x = x_var, y = "b_over_c")
+    
+}
 
 speedy_gam_plot <- function(dat, y = "mean_fec_h", var1 = "fec_b_over_fec_c", var2 = "baseline_survival") {
   b <- mgcv::gam(get(y) ~ s(get(var2), get(var1)), data = dat)
