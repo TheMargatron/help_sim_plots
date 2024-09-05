@@ -116,6 +116,7 @@ bind_params <- function(missing_vars, params_dat, filenams, foldernam = "Data/se
 }
 
 # gets specified value for each run within a set 
+# TODO change name to extract timestep
 extract_final <- function(dat, run_time = "max", extinct = FALSE){
 
   if(extinct){
@@ -176,19 +177,20 @@ timeseries_plot <- function(ts_dat,
 # https://stackoverflow.com/questions/73949067/control-label-of-contour-lines-in-contour
 
 contour_data <- function(dat, params_dat, 
+                         run_time = 50000,
                          cost_var = "fecundity_cost_of_fec_help",
                          x_var = "baseline_survival",
                          y_var = "(?!x)x"){
   
   contour_dat <- dat %>% 
     select(-contains("disp")) %>% 
-    filter(time_step == 50000) %>%
+    filter(time_step == run_time) %>%
     select(time_step, ends_with("1"), foldername, filename) %>% 
     rename_with(~ str_remove_all(.x, "[:digit:]"))
   
   contour_dat <- dat %>% 
     select(-contains("disp")) %>% 
-    filter(time_step == 50000) %>% 
+    filter(time_step == run_time) %>% 
     select(time_step, ends_with("2"), foldername, filename) %>% 
     rename_with(~ str_remove_all(.x, "[:digit:]"))  %>% 
     bind_rows(contour_dat)
