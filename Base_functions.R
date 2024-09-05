@@ -3,6 +3,7 @@
 
 # library ####
 library(tidyverse)
+library(ggplot2)
 # library(here)
 library(mgcv)
 library(mgcViz)
@@ -136,6 +137,7 @@ bind_params <- function(missing_vars, params_dat, filenams, foldernam = "Data/se
 }
 
 # gets specified value for each run within a set 
+# TODO change name to extract timestep
 extract_final <- function(dat, run_time = "max", extinct = FALSE){
 
   if(extinct){
@@ -197,19 +199,22 @@ timeseries_plot <- function(ts_dat,
 
 # prep data for all subsequent contour plots
 contour_data <- function(dat, params_dat, 
+                         run_time = 50000,
                          cost_var = "fecundity_cost_of_fec_help",
-                         x_var = "baseline_survival",
+                         keep_var = "baseline_survival",
                          y_var = "(?!x)x"){
+  
+  keep_var <- paste(keep_var, collapse = "|")
   
   contour_dat <- dat %>% 
     select(-contains("disp")) %>% 
-    filter(time_step == 50000) %>%
+    filter(time_step == run_time) %>%
     select(time_step, ends_with("1"), foldername, filename) %>% 
     rename_with(~ str_remove_all(.x, "[:digit:]"))
   
   contour_dat <- dat %>% 
     select(-contains("disp")) %>% 
-    filter(time_step == 50000) %>% 
+    filter(time_step == run_time) %>% 
     select(time_step, ends_with("2"), foldername, filename) %>% 
     rename_with(~ str_remove_all(.x, "[:digit:]"))  %>% 
     bind_rows(contour_dat)
@@ -218,7 +223,7 @@ contour_data <- function(dat, params_dat,
     mutate(param = str_remove_all(param, "[:digit:]")) %>% 
     distinct() %>% 
     filter(str_detect(param, cost_var) | 
-             str_detect(param, x_var) |
+             str_detect(param, keep_var) |
              str_detect(param, y_var)) %>% 
     pivot_wider(names_from = param,
                 values_from = val) %>% 
@@ -227,6 +232,7 @@ contour_data <- function(dat, params_dat,
   
   return(contour_dat)
 }
+
 
 contour_matrix <- function(contour_dat,
                            x_var = "baseline_survival",
