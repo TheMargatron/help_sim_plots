@@ -445,7 +445,7 @@ extract_contour <- function(contour_dat,
                                 help_var = help_var,
                                 x_var = x_var)
 
-  lines_dat <- contourLines(x = contour_mat[, x_var][[1]], 
+  lines_dat <- contourLines(x = contour_mat[,x_var][[1]], 
                             y = as.numeric(names(contour_mat)[2:length(names(contour_mat))]),
                             z = as.matrix(contour_mat[,2:ncol(contour_mat)]),
                             levels = 0) %>% 
@@ -464,37 +464,89 @@ multi_group_contour <- function(dat, x_var, help_var, grp){
            dummy_var = "1")
   
   ggplot(plot_dat, aes(x = x, y = y)) +
-    geom_point(data = dat, aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
-               alpha = 0.5) +
+    # geom_point(data = dat, aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
+    #            alpha = 0.5) +
     geom_path(aes(color = col_group), linewidth = 1.5) +
     labs(x = x_var, y = "b_over_c", col = grp) 
 }
 
-multi_response_contour <- function(dat, x_var, fec_var, surv_var){
-  # TODO: generalise to different data formats?
-  # currently only suits fec_h and surv_h being different vars
-  # alternative format would be fec_h and surv_h as groups
-  # but then I could just use multi_group_contour
-  fec_dat <- dat %>% 
+# multi_response_contour <- function(dat, x_var, fec_var, surv_var){
+#   # TODO: generalise to different data formats?
+#   # currently only suits fec_h and surv_h being different vars
+#   # alternative format would be fec_h and surv_h as groups
+#   # but then I could just use multi_group_contour
+#   fec_dat <- dat %>%
+#     select({{x_var}}, {{fec_var}}, "b_over_c") %>%
+#     extract_contour(., x_var = x_var, help_var = fec_var) %>%
+#     mutate(help_var = fec_var,
+#            dummy_var = "1")
+# 
+#   surv_dat <- dat %>%
+#     select({{x_var}}, {{surv_var}}, "b_over_c") %>%
+#     extract_contour(., x_var = x_var, help_var = surv_var) %>%
+#     mutate(help_var = surv_var,
+#            dummy_var = "1")
+# 
+#   plot_dat <- bind_rows(fec_dat, surv_dat)
+# 
+#   # print(head(plot_dat))
+# 
+#   ggplot(plot_dat, aes(x = x, y = y)) +
+#     geom_point(data = dat, aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
+#                alpha = 0.5) +
+#     geom_line(aes(color = help_var), linewidth = 1.5) +
+#     labs(x = x_var, y = "b_over_c")
+# 
+# }
+
+
+multi_response_contour <- function(fec_dat, surv_dat, x_var, fec_var, surv_var, 
+                                   TI = FALSE){
+
+  fec_contour <- fec_dat %>% 
     select({{x_var}}, {{fec_var}}, "b_over_c") %>% 
     extract_contour(., x_var = x_var, help_var = fec_var) %>% 
     mutate(help_var = fec_var,
            dummy_var = "1")
   
-  surv_dat <- dat %>% 
+  surv_contour <- surv_dat %>% 
     select({{x_var}}, {{surv_var}}, "b_over_c") %>% 
     extract_contour(., x_var = x_var, help_var = surv_var) %>% 
     mutate(help_var = surv_var,
-           dummy_var = "1")
+           dummy_var = "2")
   
-  plot_dat <- bind_rows(fec_dat, surv_dat)
+  plot_dat <- bind_rows(fec_contour, surv_contour)
   
-  ggplot(plot_dat, aes(x = x, y = y)) +
-    geom_point(data = dat, aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
+  plot_out <- ggplot(plot_dat, aes(x = x, y = y)) +
+    geom_point(data = fec_dat, aes(!! sym(x_var), b_over_c),
+               shape = 1,
                alpha = 0.5) +
-    geom_line(aes(color = help_var), linewidth = 1.5) +
+    geom_point(data = surv_dat, aes(!! sym(x_var), b_over_c),
+               shape = 2,
+               alpha = 0.5) +
+    geom_path(aes(color = help_var), linewidth = 1.5) +
     labs(x = x_var, y = "b_over_c")
+  
+  if(TI){
+    TI_dat <- expand_grid(b_over_c = seq(0, 14, 1), 
+                          s        = seq(0, 1, 0.05)) %>% 
+      mutate(fec_h  = eq_4(b_over_c = b_over_c, d = 0.15, s = s),
+             surv_h = eq_7(b_over_c = b_over_c, d = 0.15, s = s))
     
+    TI_dat <- bind_rows(
+      data.frame(help_var = fec_var,
+                 extract_contour(TI_dat, x_var = "s", help_var = "fec_h")),
+      data.frame(help_var = surv_var,
+                 extract_contour(TI_dat, x_var = "s", help_var = "surv_h"))
+    )
+
+    plot_out <- plot_out +
+      geom_line(data = TI_dat, aes(color = help_var),
+                linewidth = 1.5, linetype = "dashed", alpha = 0.5)
+    
+  }
+  
+  plot_out
 }
 
 speedy_gam_plot <- function(dat, y = "mean_fec_h", var1 = "fec_b_over_fec_c", var2 = "baseline_survival") {
