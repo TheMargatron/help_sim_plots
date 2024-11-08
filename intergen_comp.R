@@ -9,10 +9,10 @@ source(here::here("Base_functions.R"))
 
 # import data
 intergen_set_data <- read_set_data(here::here(dirname(here::here()), "src", "files_folder", "Intergen"),
-                                   pattern = "intergen3_[[:graph:]]+_f_10$")
+                                   pattern = "intergen3_[[:graph:]]+_s_6$")
 
 intergen_set_params <- read_set_params(here::here(dirname(here::here()), "src", "files_folder", "Intergen"),
-                                       pattern = "intergen3_[[:graph:]]+_f_10$")
+                                       pattern = "intergen3_[[:graph:]]+_s_6$")
 
 # prep data
 intergen_contour_dat <- contour_data(intergen_set_data, intergen_set_params,
@@ -20,4 +20,4 @@ intergen_contour_dat <- contour_data(intergen_set_data, intergen_set_params,
                                      keep_var = c("d", "baseline_survival", 
                                                   "juvenile_survival_weight"))
 
-write.csv(intergen_contour_dat, here::here("Data", "intergen3_f_10.csv"), row.names = FALSE)
+write.csv(intergen_contour_dat, here::here("Data", "intergen3_s_6.csv"), row.names = FALSE)
