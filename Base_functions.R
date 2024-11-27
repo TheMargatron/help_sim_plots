@@ -464,8 +464,8 @@ multi_group_contour <- function(dat, x_var, help_var, grp){
            dummy_var = "1")
   
   ggplot(plot_dat, aes(x = x, y = y)) +
-    # geom_point(data = dat, aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
-    #            alpha = 0.5) +
+    geom_point(data = unique(dat[c(x_var, "b_over_c")]), aes(!! sym(x_var), b_over_c, shape = "dummy_var"),
+               alpha = 0.5) +
     geom_path(aes(color = col_group), linewidth = 1.5) +
     labs(x = x_var, y = "b_over_c", col = grp) 
 }
@@ -518,10 +518,10 @@ multi_response_contour <- function(fec_dat, surv_dat, x_var, fec_var, surv_var,
   plot_dat <- bind_rows(fec_contour, surv_contour)
   
   plot_out <- ggplot(plot_dat, aes(x = x, y = y)) +
-    geom_point(data = fec_dat, aes(!! sym(x_var), b_over_c),
-               shape = 1,
+    geom_point(data = unique(fec_dat[c(x_var, "b_over_c")]), aes(!! sym(x_var), b_over_c),
+               shape = 6,
                alpha = 0.5) +
-    geom_point(data = surv_dat, aes(!! sym(x_var), b_over_c),
+    geom_point(data = unique(surv_dat[c(x_var, "b_over_c")]), aes(!! sym(x_var), b_over_c),
                shape = 2,
                alpha = 0.5) +
     geom_path(aes(color = help_var), linewidth = 1.5) +
@@ -553,6 +553,34 @@ speedy_gam_plot <- function(dat, y = "mean_fec_h", var1 = "fec_b_over_fec_c", va
   b <- mgcv::gam(get(y) ~ s(get(var2), get(var1)), data = dat)
   b <- mgcViz::getViz(b)
   plot(b)
+}
+
+# ______________________________________________________________________________
+# equations ####
+eq_4 <- function(b_over_c, d, s, N = 5){
+  h = 1-d
+  top <- 2*h*s
+  bottom <- (1+h)*(1+s)
+  
+  right <- N - (N - 1)*(top/bottom)
+  out = right - b_over_c
+  return(out)
+}
+
+eq_7 <- function(b_over_c, d, s, N = 5){
+  h = 1-d
+  top <- 2*h*(1-s)
+  bottom <- 1+s
+  
+  right <- N + (N-1)*(top/bottom)
+  out = right - b_over_c
+  return(out)
+}
+
+eq_me <- function(A, b, N, J, f){
+  P = A/(A*N + J*f)
+  c = (b/N - P*b)/(1-P)
+  return(c)
 }
 
 # ______________________________________________________________________________
@@ -664,4 +692,3 @@ plot_names <- c(# output variables
   mutate(longnam = case_when(str_detect(varnam, "1") ~ paste0(longnam, " (sp. 1)"),
                              str_detect(varnam, "2") ~ paste0(longnam, " (sp. 2)"),
                              TRUE ~ longnam))
->>>>>>> b2eb8b6e30b20b3b09c1f72acd9ca4f46c73f2f9:Base_functions.R
