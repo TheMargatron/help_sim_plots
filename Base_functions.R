@@ -27,8 +27,8 @@ read_run <- function(folder_name, file_name){
   # read parameter data from file by skipping to split_index, then rename vars and add file info
   params <- read.table(paste(folder_name, file_name, sep = "/"), header = FALSE, sep = ";", skip = split_index)
   names(params) <- c("param", "val")
-  params$folder_name <- folder_name
-  params$file_name <- file_name
+  params$foldername <- folder_name
+  params$filename <- file_name
   
   # read data from file by stopping at split_index-2, remove empty variable, add file info
   dat <- read.table(paste(folder_name, file_name, sep = "/"), header = TRUE, sep = ";", nrows = (split_index - 2)) # subtract one for the header row, another for the first blank line
